@@ -1,0 +1,88 @@
+PATH=$PATH:/opt/install/git-radar
+
+# format git-radar output
+export GIT_RADAR_FORMAT=" (%{branch}%{ :local}%{ :changes}%{ :remote}%{ :stash})"
+
+# return the prompt symbol to use, colorized based on the return value of the
+# previous command.
+function set_prompt_symbol () {
+  if test $1 -eq 0 ; then
+    PROMPT_SYMBOL="${GREEN}\$${RSTCOLOR}"
+  else
+    PROMPT_SYMBOL="${ORANGE}\$${RSTCOLOR}"
+  fi
+}
+
+# determine active python virtualenv details.
+function set_virtualenv () {
+  if test -z "$VIRTUAL_ENV" ; then
+    PYTHON_VIRTUALENV=""
+  else
+    PYTHON_VIRTUALENV="${BLUE}[${VIRTUAL_ENV##*/}]${RSTCOLOR} "
+  fi
+}
+
+# detect rvm usage
+#function set_ruby () {
+#  if [[ $GEM_HOME =~ .*rvm.* ]] ; then
+#    RUBY_ENV="${ORANGE}[${GEM_HOME##*/}]${RSTCOLOR} "
+#  else
+#    RUBY_ENV=""
+#  fi
+#}
+function set_ruby () {
+  RUBY_ENV="$(rbenv version|awk '{print $1}')"
+  if [[ ${RUBY_ENV} =~ .*system.* || -z ${RUBY_ENV} ]] ; then
+    RUBY_ENV=""
+  else
+    RUBY_ENV="${ORANGE}[${RUBY_ENV}]${RSTCOLOR} "
+  fi
+}
+
+# detect AWS environment
+function set_aws () {
+  if [[ "x$AWS_ENV" != "x" ]] ; then
+    AWS_ENV_="${YELLOW}[${AWS_ENV##*/}]${RSTCOLOR} "
+  else
+    AWS_ENV_=""
+  fi
+}
+
+# detect kube context
+function set_kube () {
+  if [[ "x$KUBE_CTX" != "x" ]] ; then
+    KUBE_CTX_="${CYAN}[${KUBE_CTX##*/}]${RSTCOLOR} "
+  else
+    KUBE_CTX_=""
+  fi
+}
+
+# set the full bash prompt.
+function set_bash_prompt () {
+  # set the PROMPT_SYMBOL variable. We do this first so we don't lose the
+  # return value of the last command.
+  set_prompt_symbol $?
+
+  # set the PYTHON_VIRTUALENV variable.
+  set_virtualenv
+
+  # set rvm usage
+  set_ruby
+
+  # set aws environment
+  set_aws
+
+  # set kube context
+  set_kube
+
+  # set the bash prompt variable.
+  PS1="${AWS_ENV_}${PYTHON_VIRTUALENV}${RUBY_ENV}${KUBE_CTX_}${GREEN}\w${RSTCOLOR}\$(git-radar --bash --fetch) ${PROMPT_SYMBOL} "
+
+  # sync history cross tabs
+  history -a; history -c; history -r
+
+  # set tab path
+  echo -ne "\033]0;${PWD/#$HOME/~}\007"
+}
+
+PROMPT_COMMAND=set_bash_prompt
